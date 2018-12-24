@@ -2,12 +2,12 @@
 #include <Keypad.h>
 
 // constants won't change. They're used here to set pin numbers:
-const int buttonPin = 2;     // the number of the pushbutton pin
+const int wandPin = 2;     // the number of the wand pin
 const int ledPin =  13;      // the number of the LED pin
 const int rttPin = 3;
 
 // variables will change:
-int buttonState = 0;         // variable for reading the pushbutton status
+int wandState = 0;         // variable for reading the wand status
 int currentRacerId = 1;
 int delayTimerStart = 0;
 String nextRacerId = "";
@@ -35,17 +35,19 @@ Keypad kpd = Keypad( makeKeymap(keys), rowPins, colPins, ROWS, COLS );
 void setup() {
   // initialize the LED pin as an output:
   pinMode(ledPin, OUTPUT);
-  // initialize the pushbutton pin as an input:
-  pinMode(buttonPin, INPUT);
+  // initialize the wand pin as an input:
+  pinMode(wandPin, INPUT);
   pinMode(rttPin, INPUT);
-
   // initialize serial communication:
   Serial.begin(9600);
 }
 
 void loop() {
+  //---------
+  //accept ID input from keypad
+  //press '*' or '#' to clear ID if you accidentally mistype
+  //----------
   char key = kpd.getKey();
-
   if(key && key!='*' && key!='#'){  // Check for a valid key.
     nextRacerId = nextRacerId + key;
     if (nextRacerId.length()>3){
@@ -56,22 +58,13 @@ void loop() {
     nextRacerId = "";
   }
 
-  // read the state of the pushbutton value:
-  buttonState = digitalRead(buttonPin);
-
-  //send start signal
-  if (buttonState == HIGH) {
-    int header = 16; //00010000
-    int Id = nextRacerId.toInt%256;
-    int checkSum = calculateCheckSum(header)+calculateCheckSum(Id);
-    Serial.write(header);
-    Serial.write(Id);
-    Serial.write(checkSum);
-
-    //Illuminate LED to show packet has been sent
-    digitalWrite(ledPin, HIGH);
-    delay(1000);
-    }else{
+  //If the limit switch is not tripped (LOW signal)
+  //then the wand has been triggered and start signal should be sent
+  if (digitalRead(wandPin); == LOW) {
+    sendStartSignal(nextRacerId.toInt%256);
+    nextRacerId = "";
+  }
+  else{
     digitalWrite(ledPin, LOW);
   }
 
@@ -86,6 +79,7 @@ void loop() {
 
   //send rtt test result back to finish line
   if (Serial.available()>0){
+    serialFlush();
     int header = 19; //00010011
     int delayTime = millis()-delayTimerStart;
     int checkSum = calculateCheckSum(header)+calculateCheckSum(delayTime);
@@ -105,4 +99,22 @@ int calculateCheckSum(byte input){
     tot += input>>i & 1;
   }
   return tot;
+}
+
+void serialFlush(){
+  while(Serial.available() > 0) {
+    char t = Serial.read();
+  }
+}
+
+void sendStartSignal(int Id){
+  int header = 16; //00010000
+    int checkSum = calculateCheckSum(header)+calculateCheckSum(Id);
+    Serial.write(header);
+    Serial.write(Id);
+    Serial.write(checkSum);
+
+    //Illuminate LED to show packet has been sent
+    digitalWrite(ledPin, HIGH);
+    //delay(1000);
 }
