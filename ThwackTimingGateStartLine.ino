@@ -11,6 +11,7 @@ int wandState = 0;         // variable for reading the wand status
 int currentRacerId = 1;
 int delayTimerStart = 0;
 String nextRacerId = "";
+int recentRacerStart = 0;
 
 //-----------------
 //set up keypad
@@ -60,9 +61,10 @@ void loop() {
 
   //If the limit switch is not tripped (LOW signal)
   //then the wand has been triggered and start signal should be sent
-  if (digitalRead(wandPin); == LOW) {
+  if (digitalRead(wandPin) == LOW && (millis()-recentRacerStart)>2000) {
     sendStartSignal(nextRacerId.toInt%256);
     nextRacerId = "";
+    recentRacerStart = millis();
   }
   else{
     digitalWrite(ledPin, LOW);
